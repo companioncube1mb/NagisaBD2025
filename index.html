@@ -501,7 +501,7 @@ function startBlinkAnimation() {
       
       // 連打検知
       const now = Date.now();
-      const isRapidFire = (now - lastDigTime) < 500; // 500ms以内なら連打
+      const isRapidFire = (now - lastDigTime) < 100; // 100ms以内なら連打
       lastDigTime = now;
       
       if(x!==null&&y!==null){
