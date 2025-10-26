@@ -521,7 +521,7 @@ function startBlinkAnimation() {
       idleTimeout = setTimeout(()=>{
         characterEl.classList.remove('digging');
         setSprite('idle');
-      }, isRapidFire ? 300 : 400);
+      }, isRapidFire ? 100 : 200);
       
       if(x!==null&&y!==null){
         const hole=document.createElement('div');
