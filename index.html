@@ -457,19 +457,20 @@
       }
     }
     
-    function startBlinkAnimation() {
-      if (blinkInterval) clearInterval(blinkInterval);
-      
-      blinkInterval = setInterval(() => {
-        if (currentSprite === 'idle' && !isDigging) {
-          // まばたき
-          setSprite('blink');
-          setTimeout(() => {
-            if (currentSprite === 'blink') setSprite('idle');
-          },  100); // 0.1秒まばたき
-        }
-      }, 200 + Math.random() * 450); // 2-5秒ごと
+function startBlinkAnimation() {
+  if (blinkInterval) clearInterval(blinkInterval);
+
+  blinkInterval = setInterval(() => {
+    if (currentSprite === 'idle' && !isDigging) {
+      // まばたき
+      setSprite('blink');
+      setTimeout(() => {
+        if (currentSprite === 'blink') setSprite('idle');
+      }, 140); // 0.14秒まばたき（100→140）
     }
+  }, 3200 + Math.random() * 3600); // 3.2〜6.8秒ごと（200→3200, 450→3600）
+}
+
     
     function playDigAnimation() {
       setSprite('digUp');
