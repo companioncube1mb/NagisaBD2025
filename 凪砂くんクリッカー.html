@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>凪砂くんクリッカー</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to bottom, #8d6e63, #5d4037);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+      color: #fff;
+      position: relative;
+      overflow-x: hidden;
+    }
+    .bg-decoration { position: fixed; pointer-events: none; opacity: 0.15; z-index: 0; }
+    .bg-emoji { font-size: 3rem; animation: float 6s ease-in-out infinite; }
+    .bg-shape { border-radius: 50%; background: rgba(255, 255, 255, 0.1); animation: float 8s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0) rotate(0)} 50%{transform:translateY(-20px) rotate(5deg)} }
+
+    h1, .main-container { position: relative; z-index: 1; }
+    h1 { font-size: 1.2rem; margin-bottom: .5rem; color:#ffecb3; text-shadow: 2px 2px 4px rgba(0,0,0,.5);}
+
+    .main-container { display:flex; gap:.5rem; max-width:1200px; width:100%; flex-wrap:wrap; }
+    .left-section { flex:1; min-width:280px; display:flex; flex-direction:column; gap:.5rem; }
+    .right-section { width:280px; display:flex; flex-direction:column; gap:.5rem; }
+
+    @media (max-width:768px){
+      .main-container { flex-direction:column; }
+      .right-section { width:100%; }
+      h1 { font-size:1.25rem; }
+    }
+
+    .stats-area,.shop-area,.collection-area,.achievements-area{
+      background:rgba(255,255,255,.1); backdrop-filter: blur(10px);
+      padding:.75rem; border-radius:.75rem; box-shadow:0 4px 6px rgba(0,0,0,.3);
+    }
+    .achievements-area {
+      min-height: 160px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .achievement-card {
+      will-change: transform;
+    }
+    .stat-item{ display:flex; justify-content:space-between; margin-bottom:.5rem; font-size:.875rem;}
+    .stat-label{ color:#ffe082; font-size:.75rem;}
+    .stat-value{ color:#ffecb3; font-weight:bold; font-size:.875rem;}
+    
+    /* 北極フィールド用の暗い色 */
+    body[data-field="arctic"] .stat-label,
+    body[data-field="arctic"] .stat-value,
+    body[data-field="arctic"] .shop-title,
+    body[data-field="arctic"] .collection-title,
+    body[data-field="arctic"] .achievements-title,
+    body[data-field="arctic"] .shop-item-name,
+    body[data-field="arctic"] .shop-item-desc,
+    body[data-field="arctic"] .shop-item-cost,
+    body[data-field="arctic"] .shop-item-owned,
+    body[data-field="arctic"] .item-name,
+    body[data-field="arctic"] .item-count,
+    body[data-field="arctic"] .achievement-item,
+    body[data-field="arctic"] #field-container button {
+      color: #1a237e !important;
+    }
+    
+    body[data-field="arctic"] .collection-item {
+      color: #1a237e !important;
+    }
+    
+    body[data-field="arctic"] .achievement-item.unlocked {
+      color: #1a237e !important;
+      border-color: #1a237e !important;
+    }
+
+
+
+    .excavation-area{
+      background:rgba(255,255,255,.1); backdrop-filter:blur(10px);
+      padding:1rem; border-radius:.75rem; box-shadow:0 4px 6px rgba(0,0,0,.3);
+      display:flex; flex-direction:column; align-items:center; gap:.5rem;
+      position:relative; min-height:350px; overflow:hidden; cursor:pointer;
+    }
+    @media (max-width:768px){ .excavation-area{ min-height:300px; } }
+
+    .field-background{ position:absolute; inset:0;
+      background:linear-gradient(to bottom, rgba(141,110,99,.3), rgba(93,64,55,.8)); transition:background .5s; }
+
+    .character{ position:absolute; transition:all 0.8s ease-in-out; z-index:10; width:150px; height:150px;}
+    .character.moving{ transition:all 0.5s ease-in-out; }
+
+    .dialogue{
+      background:rgba(255,255,255,.2); backdrop-filter:blur(10px);
+      padding:.75rem 1rem; border-radius:1rem; color:#ffecb3; font-size:.875rem; min-height:2.5rem;
+      display:flex; align-items:center; justify-content:center; max-width:300px;
+    }
+
+    .character.digging{ animation:digAnimation .4s; }
+    @keyframes digAnimation{
+      0%,100%{ transform:translateX(-50%) translateY(-50%); }
+      25%{ transform:translateX(-50%) translateY(calc(-50% + 3px)) rotate(-3deg); }
+      75%{ transform:translateX(-50%) translateY(calc(-50% + 3px)) rotate(3deg); }
+    }
+
+    .dig-hole{ position:absolute; width:80px; height:40px; background: radial-gradient(ellipse, rgba(0,0,0,.6), transparent);
+      border-radius:50%; pointer-events:none; animation:digHoleAppear .5s ease-out; z-index:1;}
+    @keyframes digHoleAppear{ 0%{transform:scale(0);opacity:0} 50%{transform:scale(1.2);opacity:1} 100%{transform:scale(1);opacity:.7} }
+
+    .golden-artifact{ position:absolute; width:60px; height:60px; font-size:3rem; cursor:pointer; z-index:20;
+      animation: goldenFloat 2s ease-in-out infinite, goldenGlow 1.5s ease-in-out infinite;
+      filter: drop-shadow(0 0 10px gold); transition: transform .1s;}
+    .golden-artifact:hover{ transform:scale(1.2); }
+    @keyframes goldenFloat{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    @keyframes goldenGlow{ 0%,100%{filter: drop-shadow(0 0 10px gold)} 50%{filter: drop-shadow(0 0 20px gold) drop-shadow(0 0 30px orange)} }
+
+    .dig-effect{ position:absolute; color:#8d6e63; font-size:1.5rem; pointer-events:none; animation:digEffectFloat .8s ease-out forwards; z-index:5;}
+    @keyframes digEffectFloat{ 0%{transform:translateY(0) scale(1);opacity:1} 100%{transform:translateY(-50px) scale(.5);opacity:0} }
+
+    .field-info{ position:absolute; top:1rem; left:50%; transform:translateX(-50%); font-size:1.5rem; color:#ffecb3;
+      text-shadow:2px 2px 4px rgba(0,0,0,.5); z-index:10; }
+
+    .click-effect{ position:absolute; color:#ffecb3; font-weight:bold; font-size:1.5rem; pointer-events:none; animation:floatUp 1s ease-out forwards; }
+    @keyframes floatUp{ 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-100px)} }
+
+    .found-item{
+      background: rgba(255,235,59,.2); border:2px solid #ffeb3b; padding:.5rem 1rem; border-radius:.5rem;
+      font-size:1.0rem; animation:itemPop .5s ease-out; min-height:2.4rem; display:flex; align-items:center; justify-content:center;
+    }
+    @keyframes itemPop{ 0%{ transform:scale(0); opacity:0;} 50%{ transform:scale(1.2);} 100%{ transform:scale(1); opacity:1;} }
+
+    .shop-title,.collection-title,.achievements-title{ font-size:1rem; color:#ffecb3; margin-bottom:.75rem; text-align:center; }
+    .shop-item{ background:rgba(255,255,255,.1); padding:.5rem; border-radius:.4rem; margin-bottom:.5rem; border:2px solid transparent; transition:all .2s;}
+    .shop-item:hover{ background:rgba(255,255,255,.2); border-color:#ffeb3b;}
+    .shop-item.disabled{ opacity:.5; cursor:not-allowed;}
+    .shop-item:not(.disabled){ cursor:pointer;}
+    .shop-item-name{ font-weight:bold; color:#ffecb3; margin-bottom:.2rem; font-size:.8rem;}
+    .shop-item-desc{ font-size:.7rem; color:#ffe082; margin-bottom:.2rem;}
+    .shop-item-cost{ color:#fff176; font-size:.7rem;}
+    .shop-item-owned{ color:#81c784; font-size:.65rem;}
+    .shop-upgrade-icons{ display:flex; flex-wrap:wrap; gap:.2rem; margin-top:.4rem; min-height:1.2rem; }
+    .shop-upgrade-icon{ font-size:1rem; opacity:.9; animation:iconPop .3s ease-out; }
+    @keyframes iconPop{ 0%{transform:scale(0);opacity:0} 50%{transform:scale(1.2)} 100%{transform:scale(1);opacity:.9} }
+
+    .collection-area{ max-height:300px; overflow-y:auto; }
+    .collection-item{ background:rgba(255,255,255,.1); padding:.4rem; border-radius:.4rem; margin-bottom:.4rem; display:flex; justify-content:space-between; align-items:center;}
+    .collection-item.common{ border-left:3px solid #bdbdbd; }
+    .collection-item.rare{ border-left:3px solid #64b5f6; }
+    .collection-item.epic{ border-left:3px solid #ba68c8; }
+    .collection-item.legendary{ border-left:3px solid #ffd54f; }
+    .item-name{ color:#ffecb3; font-size:.75rem;}
+    .item-count{ color:#ffe082; font-size:.7rem;}
+
+    .tab-buttons{ display:flex; gap:.5rem; margin-bottom:.75rem; }
+    .tab-button{ flex:1; padding:.5rem; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2);
+      border-radius:.4rem; color:#ffecb3; cursor:pointer; transition:.2s; font-size:.75rem; }
+    .tab-button.active{ background:rgba(255,235,59,.3); border-color:#ffeb3b; }
+    .tab-button:hover:not(.active){ background:rgba(255,255,255,.2); }
+
+    .gallery-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; }
+    .gallery-item{ background:rgba(255,255,255,.1); padding:.5rem; border-radius:.4rem; text-align:center; cursor:pointer;
+      transition:.2s; border:2px solid transparent; min-height:85px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    .gallery-item:hover{ background:rgba(255,255,255,.2); transform:translateY(-2px); }
+    .gallery-item.legendary{ border-color:#ffd54f; background:linear-gradient(135deg, rgba(255,213,79,.2), rgba(255,255,255,.1)); animation:shimmer 2s infinite; }
+    @keyframes shimmer{ 0%,100%{ box-shadow:0 0 5px rgba(255,213,79,.3)} 50%{ box-shadow:0 0 15px rgba(255,213,79,.6)} }
+    .gallery-item.locked{ opacity:.4; filter:grayscale(100%); cursor:default; }
+    .gallery-item.locked:hover{ transform:none; background:rgba(255,255,255,.1); }
+    .gallery-emoji{ font-size:2rem; margin-bottom:.25rem; }
+    .gallery-name{ font-size:.65rem; color:#ffecb3; margin-bottom:.1rem; }
+    .gallery-count{ font-size:.6rem; color:#ffe082; }
+    .gallery-stage-header{ color:#ffecb3; font-size:.85rem; margin:.75rem 0 .5rem; padding-bottom:.25rem; border-bottom:1px solid rgba(255,255,255,.2); }
+    .gallery-stage-header.locked{ color:#ccc; }
+
+    .ach-item{ background:rgba(255,255,255,.08); padding:.45rem; border-radius:.45rem; margin-bottom:.4rem; border:2px dashed rgba(255,255,255,.15);
+      display:flex; gap:.5rem; align-items:center; justify-content:space-between; font-size:.75rem; }
+    .ach-item.unlocked{ border-style:solid; border-color:#ffd54f; background:rgba(255,235,59,.12); }
+    .ach-left{ display:flex; gap:.5rem; align-items:center;}
+    .ach-badge{ font-size:1rem; }
+    .ach-name{ color:#ffecb3; font-weight:bold; }
+    .ach-desc{ color:#ffe082; font-size:.7rem; }
+
+    .toast{ position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+      background:rgba(255,235,59,.15); border:1px solid #ffeb3b; color:#ffecb3; padding:.5rem .75rem; border-radius:.5rem;
+      box-shadow:0 4px 12px rgba(0,0,0,.4); z-index:9999; font-size:.85rem; animation:toastPop .25s ease-out; }
+    @keyframes toastPop{ from{transform:translateX(-50%) scale(.9); opacity:0} to{transform:translateX(-50%) scale(1); opacity:1} }
+  </style>
+</head>
+<body>
+  <!-- 背景装飾 -->
+  <div class="bg-decoration bg-emoji" style="top: 10%; left: 5%; animation-delay: 0s;">⛰️</div>
+  <div class="bg-decoration bg-emoji" style="top: 15%; right: 8%; animation-delay: 1s;">🏔️</div>
+  <div class="bg-decoration bg-emoji" style="top: 40%; left: 10%; animation-delay: 2s;">⭐</div>
+  <div class="bg-decoration bg-emoji" style="top: 60%; right: 5%; animation-delay: 1.5s;">🌟</div>
+  <div class="bg-decoration bg-emoji" style="top: 80%; left: 15%; animation-delay: 0.5s;">🔺</div>
+  <div class="bg-decoration bg-emoji" style="top: 25%; right: 15%; animation-delay: 2.5s;">💎</div>
+  <div class="bg-decoration bg-emoji" style="top: 70%; left: 3%; animation-delay: 3s;">🗻</div>
+  <div class="bg-decoration bg-emoji" style="top: 50%; right: 12%; animation-delay: 1s;">✨</div>
+  <div class="bg-decoration bg-shape" style="top: 20%; left: 50%; width: 60px; height: 60px; animation-delay: 2s;"></div>
+  <div class="bg-decoration bg-shape" style="top: 65%; left: 70%; width: 40px; height: 40px; animation-delay: 1s;"></div>
+  <div class="bg-decoration bg-shape" style="top: 35%; left: 25%; width: 50px; height: 50px; animation-delay: 3s;"></div>
+
+  <h1>⛏️ 凪砂くんクリッカー</h1>
+
+  <div class="main-container">
+    <div class="left-section">
+      <!-- ステータス -->
+      <div class="stats-area">
+        <div class="stat-item"><span class="stat-label">発掘ポイント</span><span class="stat-value" id="points">0</span></div>
+        <div class="stat-item"><span class="stat-label">1クリックの発掘量</span><span class="stat-value" id="click-power">1</span></div>
+        <div class="stat-item"><span class="stat-label">自動発掘/秒</span><span class="stat-value" id="auto-power">0</span></div>
+        <div class="stat-item"><span class="stat-label">総発掘回数</span><span class="stat-value" id="total-digs">0</span></div>
+        <div class="stat-item"><span class="stat-label">累計獲得ポイント</span><span class="stat-value" id="total-earned">0</span></div>
+      </div>
+
+      <!-- 発掘エリア -->
+      <div class="excavation-area" id="excavation-area">
+        <div class="field-background" id="field-background"></div>
+        <div class="field-info" id="current-field-name" style="font-size:.9rem; top:.4rem;">🌱 草原</div>
+
+        <!-- キャラクター -->
+        <div class="character" id="character">
+          <img id="char-sprite" src="" alt="凪砂" style="width:180px; height:auto; image-rendering: smooth;">
+        </div>
+
+        <!-- セリフ -->
+        <div class="dialogue" id="dialogue" style="position:absolute; bottom:2.5rem; left:50%; transform:translateX(-50%); z-index:10; padding:.4rem .6rem; font-size:.7rem; min-height:1.8rem; max-width:220px;">…</div>
+        <div class="found-item" id="found-item" style="visibility:hidden; position:absolute; bottom:.75rem; left:50%; transform:translateX(-50%); z-index:10; padding:.35rem .6rem; font-size:.8rem; min-height:1.8rem;">何も見つからなかった</div>
+      </div>
+
+      <!-- フィールド選択 -->
+      <div class="stats-area">
+        <div style="font-size:.875rem; color:#ffecb3; margin-bottom:.5rem; text-align:center;">🌍 発掘場所</div>
+        <div id="field-container" style="display:flex; flex-direction:column; gap:.4rem;"></div>
+      </div>
+    </div>
+
+    <div class="right-section">
+      <!-- ショップ -->
+      <div class="shop-area">
+        <div class="shop-title">⚙️ アップグレード</div>
+        <div id="shop-container"></div>
+      </div>
+
+      <!-- コレクション -->
+      <div class="collection-area">
+        <div class="tab-buttons">
+          <button class="tab-button active" id="list-tab">リスト</button>
+          <button class="tab-button" id="gallery-tab">図鑑</button>
+        </div>
+        <div class="collection-title">🏺 発見した遺物</div>
+        <div id="collection-container"></div>
+      </div>
+
+      <!-- 実績 -->
+      <div class="achievements-area">
+        <div class="achievements-title">🏆 実績</div>
+        <div id="achievements-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- クレジット -->
+  <div style="margin-top: 1.5rem; width: 100%; max-width: 400px; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 1rem; border-radius: 0.75rem; text-align: center;">
+    <div style="color: #ffe082; font-size: 0.75rem; line-height: 1.6;">
+      制作者：しょうでん@cakecore1mb<br>
+      二次創作作品 あんさんぶるスターズ!!公式様とは一切関係ありません。<br>
+      誕生日記念のミニゲームなので、バランス調整・デバッグは完全ではありません。ご了承ください。<br>
+      リリース：2025年10月27日<br>
+      凪砂くんお誕生日おめでとうございます！
+    </div>
+  </div>
+
+  <!-- リセット -->
+  <div style="margin-top: 1rem; width: 100%; max-width: 300px;">
+    <button id="reset-btn" style="
+      width: 100%; padding: .5rem; background: rgba(244,67,54,.3); color:#ffcdd2;
+      border:1px solid #ef5350; border-radius:.5rem; cursor:pointer; font-size:.8rem; transition:all .2s;"
+      onmouseover="this.style.background='rgba(244,67,54,0.5)'" onmouseout="this.style.background='rgba(244,67,54,0.3)'">
+      🔄 データをリセット
+    </button>
+  </div>
+
+  <script>
+    /*** キャラクター画像データ ***/
+    // 画像ファイルは images/ フォルダに配置してください
+    const characterImages = {
+      grassland: {
+        idle: "images/grassland_idle.png",
+        blink: "images/grassland_blink.png",
+        digDown: "images/grassland_digDown.png",
+        digUp: "images/grassland_digUp.png"
+      },
+      desert: {
+        idle: "images/desert_idle.png",
+        blink: "images/desert_blink.png",
+        digDown: "images/desert_digDown.png",
+        digUp: "images/desert_digUp.png"
+      },
+      ruins: {
+        idle: "images/ruins_idle.png",
+        blink: "images/ruins_blink.png",
+        digDown: "images/ruins_digDown.png",
+        digUp: "images/ruins_digUp.png"
+      },
+      arctic: {
+        idle: "images/arctic_idle.png",
+        blink: "images/arctic_blink.png",
+        digDown: "images/arctic_digDown.png",
+        digUp: "images/arctic_digUp.png"
+      },
+      ocean: {
+        idle: "images/ocean_idle.png",
+        blink: "images/ocean_blink.png",
+        digDown: "images/ocean_digDown.png",
+        digUp: "images/ocean_digUp.png"
+      },
+      cave: {
+        idle: "images/cave_idle.png",
+        blink: "images/cave_blink.png",
+        digDown: "images/cave_digDown.png",
+        digUp: "images/cave_digUp.png"
+      },
+      library: {
+        idle: "images/library_idle.png",
+        blink: "images/library_blink.png",
+        digDown: "images/library_digDown.png",
+        digUp: "images/library_digUp.png"
+      },
+      moon: {
+        idle: "images/moon_idle.png",
+        blink: "images/moon_blink.png",
+        digDown: "images/moon_digDown.png",
+        digUp: "images/moon_digUp.png"
+      },
+      mars: {
+        idle: "images/mars_idle.png",
+        blink: "images/mars_blink.png",
+        digDown: "images/mars_digDown.png",
+        digUp: "images/mars_digUp.png"
+      }
+    };
+
+
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    function playDigSound(){ const osc=audioContext.createOscillator(),g=audioContext.createGain();osc.connect(g);g.connect(audioContext.destination);osc.frequency.value=300;osc.type='sine';g.gain.setValueAtTime(0.25,audioContext.currentTime);g.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+0.1);osc.start();osc.stop(audioContext.currentTime+0.1); }
+    function playPurchaseSound(){ const o=audioContext.createOscillator(),g=audioContext.createGain();o.connect(g);g.connect(audioContext.destination);o.type='triangle';o.frequency.setValueAtTime(400,audioContext.currentTime);o.frequency.setValueAtTime(600,audioContext.currentTime+0.05);g.gain.setValueAtTime(0.2,audioContext.currentTime);g.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+0.15);o.start();o.stop(audioContext.currentTime+0.15); }
+    function playGoldenSound(){ 
+      // キラキラした3重和音
+      [800, 1000, 1200].forEach((freq,i)=>{
+        const o=audioContext.createOscillator(),g=audioContext.createGain();
+        o.connect(g);g.connect(audioContext.destination);
+        o.type='sine';
+        o.frequency.setValueAtTime(freq,audioContext.currentTime+i*0.08);
+        g.gain.setValueAtTime(0.15,audioContext.currentTime+i*0.08);
+        g.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+i*0.08+0.3);
+        o.start(audioContext.currentTime+i*0.08);
+        o.stop(audioContext.currentTime+i*0.08+0.3);
+      });
+    }
+
+    let points=0,totalPointsEarned=0,clickPower=1,autoPower=0,totalDigs=0,rareBonus=0,currentField='grassland',goldenArtifactActive=false,currentTab='list',charX=50,charY=50,prevCharX=50,isDigging=false,wanderInterval=null,lastDigTime=0,idleTimeout=null;
+    const upgrades={shovel:0,autoDigger:0,detector:0,team:0,lab:0},collection={};
+    const achievementsDef=[{id:'first_dig',name:'初掘り',desc:'初めて発掘する',unlocked:false},{id:'dig_100',name:'掘削職人',desc:'総発掘回数が100回',unlocked:false},{id:'first_rare',name:'輝きの予感',desc:'初めてレア以上を発見',unlocked:false},{id:'first_epic',name:'歴史的一歩',desc:'初めてエピックを発見',unlocked:false},{id:'first_legend',name:'奇跡の目撃者',desc:'初めてレジェンドを発見',unlocked:false},{id:'unlock_2',name:'旅立ち',desc:'フィールドを2か所以上解禁',unlocked:false},{id:'unlock_all',name:'世界征服',desc:'全フィールド解禁',unlocked:false},{id:'earn_1k',name:'小金持ち',desc:'累計1,000ポイント獲得',unlocked:false},{id:'earn_10k',name:'発掘王',desc:'累計10,000ポイント獲得',unlocked:false},{id:'earn_50k',name:'遺跡の覇者',desc:'累計50,000ポイント獲得',unlocked:false},{id:'earn_100k',name:'伝説の探検家',desc:'累計100,000ポイント獲得',unlocked:false},{id:'earn_500k',name:'神話級コレクター',desc:'累計500,000ポイント獲得',unlocked:false},{id:'earn_1m',name:'発掘の神',desc:'累計1,000,000ポイント獲得',unlocked:false},{id:'complete_grassland',name:'草原マスター',desc:'草原の全アイテム発見',unlocked:false},{id:'complete_desert',name:'砂漠マスター',desc:'砂漠の全アイテム発見',unlocked:false},{id:'complete_ruins',name:'都市マスター',desc:'都市遺跡の全アイテム発見',unlocked:false},{id:'complete_arctic',name:'北極マスター',desc:'北極の全アイテム発見',unlocked:false},{id:'complete_ocean',name:'海底マスター',desc:'海底の全アイテム発見',unlocked:false},{id:'complete_cave',name:'洞窟マスター',desc:'洞窟の全アイテム発見',unlocked:false},{id:'complete_library',name:'図書館マスター',desc:'古代図書館の全アイテム発見',unlocked:false},{id:'complete_moon',name:'月面マスター',desc:'月面の全アイテム発見',unlocked:false},{id:'complete_mars',name:'火星マスター',desc:'火星の全アイテム発見',unlocked:false},{id:'complete_all',name:'完全制覇',desc:'全アイテム発見',unlocked:false}];
+    const achievementsState={};achievementsDef.forEach(a=>achievementsState[a.id]={unlocked:false,date:null});
+
+    const pointsEl=document.getElementById('points'),clickPowerEl=document.getElementById('click-power'),autoPowerEl=document.getElementById('auto-power'),totalDigsEl=document.getElementById('total-digs'),totalEarnedEl=document.getElementById('total-earned'),dialogueEl=document.getElementById('dialogue'),excavationAreaEl=document.getElementById('excavation-area'),characterEl=document.getElementById('character'),charSpriteEl=document.getElementById('char-sprite'),fieldBackgroundEl=document.getElementById('field-background'),foundItemEl=document.getElementById('found-item'),shopContainerEl=document.getElementById('shop-container'),collectionContainerEl=document.getElementById('collection-container'),achievementsContainerEl=document.getElementById('achievements-container'),listTabEl=document.getElementById('list-tab'),galleryTabEl=document.getElementById('gallery-tab');
+
+    const fields={grassland:{name:'草原',emoji:'🌱',unlockCost:0,unlocked:true,bgGradient:'linear-gradient(to bottom, #8d6e63, #5d4037)',fieldBg:'linear-gradient(to bottom, rgba(141,110,99,0.3), rgba(93,64,55,0.8))',digButton:'#8d6e63',textColor:'#ffecb3',outfit:{body:'linear-gradient(to bottom, #ba68c8, #ab47bc)',hair:'linear-gradient(to bottom, #5e35b1, #673ab7)'},artifacts:{common:[{name:'土',emoji:'🟤'},{name:'石ころ',emoji:'🪨'},{name:'木の破片',emoji:'🪵'},{name:'貝殻',emoji:'🐚'}],rare:[{name:'土器のかけら',emoji:'🏺'},{name:'古い骨',emoji:'🦴'},{name:'化石',emoji:'🦕'},{name:'古代のコイン',emoji:'🪙'},{name:'アメジスト',emoji:'💜'},{name:'ローズクォーツ',emoji:'🩷'},{name:'シトリン',emoji:'🟡'},{name:'ペリドット',emoji:'💚'}],epic:[{name:'完全な壺',emoji:'🏺'},{name:'恐竜の化石',emoji:'🦖'},{name:'古代の武器',emoji:'⚔️'}],legendary:[{name:'紫色のヘビ',emoji:'🐍'},{name:'ハイエナの尻尾',emoji:'🦴'}]}},desert:{name:'砂漠',emoji:'🏜️',unlockCost:500,unlocked:false,bgGradient:'linear-gradient(to bottom, #d4a574, #c19a6b)',fieldBg:'linear-gradient(to bottom, rgba(212,165,116,0.3), rgba(193,154,107,0.8))',digButton:'#d4a574',textColor:'#5d4037',outfit:{body:'linear-gradient(to bottom,#ffb74d,#ff9800)',hair:'linear-gradient(to bottom,#f57c00,#e65100)'},artifacts:{common:[{name:'砂',emoji:'⏳'},{name:'サボテンの棘',emoji:'🌵'},{name:'乾いた骨',emoji:'🦴'}],rare:[{name:'エジプト土器',emoji:'🏺'},{name:'ミイラの包帯',emoji:'🧻'},{name:'古代の壁画',emoji:'🎨'},{name:'トパーズ',emoji:'🟡'},{name:'ガーネット',emoji:'🔴'},{name:'タイガーアイ',emoji:'🟤'},{name:'カルセドニー',emoji:'🤍'}],epic:[{name:'ファラオの仮面',emoji:'👺'},{name:'スカラベ',emoji:'🪲'},{name:'ヒエログリフの石板',emoji:'📜'}],legendary:[{name:'砂漠の守護神像',emoji:'🗿'}]}},ruins:{name:'都市遺跡',emoji:'🏙️',unlockCost:2500,unlocked:false,bgGradient:'linear-gradient(to bottom, #607d8b, #455a64)',fieldBg:'linear-gradient(to bottom, rgba(96,125,139,0.3), rgba(69,90,100,0.8))',digButton:'#607d8b',textColor:'#eceff1',outfit:{body:'linear-gradient(to bottom,#78909c,#607d8b)',hair:'linear-gradient(to bottom,#546e7a,#455a64)'},artifacts:{common:[{name:'コンクリート片',emoji:'🧱'},{name:'錆びた鉄',emoji:'🔩'},{name:'ガラス片',emoji:'🪟'}],rare:[{name:'古い看板',emoji:'🪧'},{name:'ネオン管',emoji:'💡'},{name:'金庫',emoji:'🔐'},{name:'アイオライト',emoji:'💙'},{name:'アパタイト',emoji:'💚'},{name:'ヘマタイト',emoji:'⚫'},{name:'ロードクロサイト',emoji:'🩷'}],epic:[{name:'タイムカプセル',emoji:'⏳'},{name:'失われた技術',emoji:'⚙️'},{name:'都市の記憶',emoji:'💾'}],legendary:[{name:'文明の遺産',emoji:'🏛️'}]}},arctic:{name:'北極',emoji:'🧊',unlockCost:6000,unlocked:false,bgGradient:'linear-gradient(to bottom, #b3e5fc, #4fc3f7)',fieldBg:'linear-gradient(to bottom, rgba(179,229,252,0.3), rgba(79,195,247,0.8))',digButton:'#4fc3f7',textColor:'#000000',outfit:{body:'linear-gradient(to bottom,#90caf9,#42a5f5)',hair:'linear-gradient(to bottom,#e3f2fd,#bbdefb)'},artifacts:{common:[{name:'氷',emoji:'🧊'},{name:'雪の結晶',emoji:'❄️'},{name:'凍った魚',emoji:'🐟'}],rare:[{name:'マンモスの牙',emoji:'🦣'},{name:'氷河期の化石',emoji:'🦴'},{name:'バイキングの斧',emoji:'🪓'},{name:'サファイア',emoji:'🔵'},{name:'アクアマリン',emoji:'💙'},{name:'ムーンストーン',emoji:'🤍'},{name:'ターコイズ',emoji:'🩵'},{name:'ラピスラズリ',emoji:'💙'}],epic:[{name:'凍結したマンモス',emoji:'🦣'},{name:'古代の氷の盾',emoji:'🛡️'},{name:'北極星の欠片',emoji:'⭐'}],legendary:[{name:'氷の女王の王冠',emoji:'👑'}]}},ocean:{name:'海底',emoji:'🌊',unlockCost:15000,unlocked:false,bgGradient:'linear-gradient(to bottom, #1565c0, #0d47a1)',fieldBg:'linear-gradient(to bottom, rgba(21,101,192,0.3), rgba(13,71,161,0.8))',digButton:'#1565c0',textColor:'#e3f2fd',outfit:{body:'linear-gradient(to bottom,#26c6da,#0097a7)',hair:'linear-gradient(to bottom,#006064,#004d40)'},artifacts:{common:[{name:'貝殻',emoji:'🐚'},{name:'サンゴ',emoji:'🪸'},{name:'海藻',emoji:'🌿'}],rare:[{name:'真珠',emoji:'📿'},{name:'沈没船の破片',emoji:'⚓'},{name:'古代の水中都市の遺物',emoji:'🏛️'},{name:'エメラルド',emoji:'💚'},{name:'ヒスイ',emoji:'💚'},{name:'オパール',emoji:'🌈'},{name:'マラカイト',emoji:'💚'}],epic:[{name:'アトランティスの石板',emoji:'📜'},{name:'海神の三叉槍',emoji:'🔱'},{name:'人魚の鱗',emoji:'🧜'}],legendary:[{name:'メンダコ',emoji:'🐙'}]}},cave:{name:'洞窟',emoji:'🕳️',unlockCost:40000,unlocked:false,bgGradient:'linear-gradient(to bottom, #424242, #212121)',fieldBg:'linear-gradient(to bottom, rgba(66,66,66,0.3), rgba(33,33,33,0.9))',digButton:'#424242',textColor:'#e0e0e0',outfit:{body:'linear-gradient(to bottom,#78909c,#546e7a)',hair:'linear-gradient(to bottom,#37474f,#263238)'},artifacts:{common:[{name:'鍾乳石',emoji:'🪨'},{name:'コウモリの骨',emoji:'🦇'},{name:'古代の壁画',emoji:'🎨'}],rare:[{name:'水晶',emoji:'💎'},{name:'原始人の道具',emoji:'🔨'},{name:'洞窟壁画',emoji:'🖼️'},{name:'ダイヤモンド',emoji:'💎'},{name:'ルビー',emoji:'🔴'},{name:'サンストーン',emoji:'🧡'},{name:'ジャスパー',emoji:'🟤'},{name:'オニキス',emoji:'⚫'}],epic:[{name:'巨大水晶',emoji:'💠'},{name:'ドラゴンの骨',emoji:'🐉'},{name:'魔法の杖',emoji:'🪄'}],legendary:[{name:'ナギゴンの化石',emoji:'🦖'}]}},library:{name:'古代図書館',emoji:'📚',unlockCost:80000,unlocked:false,bgGradient:'linear-gradient(to bottom, #6d4c41, #4e342e)',fieldBg:'linear-gradient(to bottom, rgba(109,76,65,0.3), rgba(78,52,46,0.8))',digButton:'#6d4c41',textColor:'#ffecb3',outfit:{body:'linear-gradient(to bottom,#8d6e63,#6d4c41)',hair:'linear-gradient(to bottom,#5d4037,#4e342e)'},artifacts:{common:[{name:'古い紙',emoji:'📄'},{name:'インクの染み',emoji:'🖋️'},{name:'埃',emoji:'💨'}],rare:[{name:'古代の書物',emoji:'📖'},{name:'羊皮紙',emoji:'📜'},{name:'暗号文',emoji:'🔐'},{name:'アンバー',emoji:'🟡'},{name:'ブラッドストーン',emoji:'🔴'},{name:'ラブラドライト',emoji:'🌈'},{name:'スモーキークォーツ',emoji:'🟤'}],epic:[{name:'失われた知識の書',emoji:'📕'},{name:'魔導書',emoji:'📘'},{name:'預言書',emoji:'📙'}],legendary:[{name:'真理の書',emoji:'📗'}]}},moon:{name:'月面',emoji:'🌙',unlockCost:150000,unlocked:false,bgGradient:'linear-gradient(to bottom, #757575, #424242)',fieldBg:'linear-gradient(to bottom, rgba(117,117,117,0.3), rgba(66,66,66,0.9))',digButton:'#757575',textColor:'#f5f5f5',outfit:{body:'linear-gradient(to bottom,#e0e0e0,#9e9e9e)',hair:'linear-gradient(to bottom,#fafafa,#bdbdbd)'},artifacts:{common:[{name:'月の石',emoji:'🌑'},{name:'レゴリス',emoji:'🪨'},{name:'隕石の破片',emoji:'☄️'}],rare:[{name:'月のクレーター',emoji:'🕳️'},{name:'宇宙飛行士の旗',emoji:'🚩'},{name:'月面基地の残骸',emoji:'🏗️'},{name:'アメトリン',emoji:'💜'},{name:'タンザナイト',emoji:'💙'},{name:'アレキサンドライト',emoji:'💜'},{name:'スピネル',emoji:'🔴'}],epic:[{name:'月の欠片',emoji:'🌙'},{name:'エイリアンの遺物',emoji:'👽'},{name:'未知の金属',emoji:'⚙️'}],legendary:[{name:'ティーセット',emoji:'🫖'},{name:'萌黄色の着物',emoji:'👘'}]}},mars:{name:'火星',emoji:'🔴',unlockCost:300000,unlocked:false,bgGradient:'linear-gradient(to bottom, #d84315, #bf360c)',fieldBg:'linear-gradient(to bottom, rgba(216,67,21,0.3), rgba(191,54,12,0.8))',digButton:'#d84315',textColor:'#ffccbc',outfit:{body:'linear-gradient(to bottom,#ff7043,#f4511e)',hair:'linear-gradient(to bottom,#d84315,#bf360c)'},artifacts:{common:[{name:'赤い砂',emoji:'🔴'},{name:'火星の石',emoji:'🪨'},{name:'酸化鉄',emoji:'🟤'}],rare:[{name:'火星のクレーター',emoji:'🕳️'},{name:'ローバーの破片',emoji:'🤖'},{name:'水の痕跡',emoji:'💧'},{name:'トルマリン',emoji:'🌈'},{name:'ジルコン',emoji:'💎'},{name:'クリソベリル',emoji:'🟡'},{name:'フローライト',emoji:'💜'}],epic:[{name:'火星人の遺物',emoji:'👽'},{name:'古代火星文明の遺跡',emoji:'🏛️'},{name:'テラフォーミング装置',emoji:'🔧'}],legendary:[{name:'メンダコ星人',emoji:'👾'}]}}};
+
+    const upgradeData=[{id:'shovel',name:'🔨 シャベル強化',desc:'クリック発掘量 +1',baseCost:10,costMultiplier:1.45,icon:'🔨',effect:()=>{clickPower+=1;}},{id:'autoDigger',name:'🤖 自動発掘機',desc:'毎秒自動発掘 +0.5',baseCost:60,costMultiplier:1.7,icon:'🤖',effect:()=>{autoPower+=0.5;}},{id:'detector',name:'📡 探知機',desc:'レア出現率 +1%',baseCost:120,costMultiplier:1.9,icon:'📡',effect:()=>{rareBonus+=1;}},{id:'team',name:'👥 発掘チーム',desc:'毎秒自動発掘 +2',baseCost:700,costMultiplier:2.4,icon:'👥',effect:()=>{autoPower+=2;}},{id:'lab',name:'🏛️ 研究所',desc:'発掘速度2倍（クリック/自動）',baseCost:4000,costMultiplier:2.8,icon:'🏛️',effect:()=>{clickPower*=2;autoPower*=2;}}];
+
+    function addPoints(n){const v=Math.max(0,Number(n)||0);points+=v;totalPointsEarned+=v;}
+    function spendPoints(n){const v=Math.max(0,Number(n)||0);points=Math.max(0,points-v);}
+
+    function getTrustLevel(){if(totalPointsEarned>=1000000)return 5;if(totalPointsEarned>=100000)return 4;if(totalPointsEarned>=10000)return 3;if(totalPointsEarned>=1000)return 2;if(totalPointsEarned>=100)return 1;return 0;}
+    
+    // 信頼度レベルまでの全セリフを取得（累積）
+    function getCumulativeDialogues(dialogueObj, trustLevel) {
+      const allDialogues = [];
+      for (let i = 0; i <= trustLevel; i++) {
+        if (dialogueObj[i]) {
+          allDialogues.push(...dialogueObj[i]);
+        }
+      }
+      return allDialogues;
+    }
+
+    const dialogues={common:{0:['…順調だね','…いい感じだ','…その調子'],1:['…なかなかやるね','…慣れてきたみたいだ','…悪くない'],2:['…あなたも板についてきたね','…いいペースだ','…なかなかいい腕前だ'],3:['…さすがだね','…あなたとなら楽しいよ','…信頼してるよ'],4:['…本当に頼りになる','…あなたがいてくれて助かる','…最高の相棒だね'],5:['…あなたと一緒だから頑張れる','…ずっとこうしていたいな']},rare:{0:['…おお、いいものだ','…これは貴重だね','…すごいじゃないか'],1:['…なかなかの発見だ','…センスがいいね','…期待できそうだ'],2:['…素晴らしい！','…あなたの目は確かだ','…さすがだよ'],3:['…やったね！','…あなたとなら何でも見つけられそうだ','…最高だ！'],4:['…信じられない、また見つけた！','…あなたは本当にすごい','…誇らしいよ'],5:['…あなたは私の宝物だよ','…いつも驚かせてくれるね','…あなたがいれば無敵だ']},epic:{0:['…素晴らしい発見だ！','…あなたは才能があるよ','…歴史的な発見だね'],1:['…これはすごい！','…本当に才能があるね','…驚いたよ'],2:['…素晴らしい！感動した','…あなたは天才かもしれない','…信じられない発見だ'],3:['…最高だ！','…あなたとなら夢が叶いそうだ','…こんな発見初めてだ！'],4:['…言葉にならないよ…','…あなたは私の希望だ','…一緒にいられて幸せだ'],5:['…あなたがいてくれて本当に良かった','…これからもずっと一緒だよ']},legendary:{0:['…信じられない！','…あなたは天才だ！','…これは奇跡だよ！'],1:['…すごすぎる…！','…奇跡を見た気分だ'],2:['…こんなの見たことない！','…あなたは本物の天才だ','…感動で震えてる'],3:['…ありがとう…本当に','…あなたと出会えて良かった','…最高の瞬間だ'],4:['…あなたがいなきゃここまで来れなかった','…いつもありがとう'],5:['…愛してる…なんて','…あなたは私の光だよ','…ずっと一緒にいよう']},dig:{0:['…さあ、掘ろう','…ここに何かありそうだ','…期待が高まるね','…こんな所まで来たら、茨に叱られちゃうかも','…日和くんに電話しようかな','…ジュンも連れてきたら楽しんでくれたかな'],1:['…今日も頑張ろう','…いい予感がする','…一緒に探そう'],2:['…あなたとなら楽しいよ','…何が出てくるかな','…わくわくするね'],3:['…今日も一緒だね','…あなたといると落ち着く','…楽しみだ'],4:['…あなたと過ごす時間が好きだ','…いつもありがとう','…幸せだよ'],5:['…あなたがいれば何も怖くない','…毎日が宝物だと思ってるよ']}};
+
+    function showDialogue(text){dialogueEl.textContent=text;}
+    function maybeShowDialogue(rarity){const baseChance=100,reduction=totalDigs/20;const chance=Math.max(5,baseChance-reduction);if(Math.random()*100<chance){const trustLevel=getTrustLevel();const categoryDialogues=dialogues[rarity];const list=categoryDialogues?getCumulativeDialogues(categoryDialogues,trustLevel):getCumulativeDialogues(dialogues.common,trustLevel);showDialogue(list[Math.floor(Math.random()*list.length)]);}}
+
+    function toast(msg,ms=1800){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),ms);}
+    function renderAchievements(){achievementsContainerEl.innerHTML='';achievementsDef.forEach(a=>{const st=achievementsState[a.id];const el=document.createElement('div');el.className='ach-item '+(st.unlocked?'unlocked':'');el.innerHTML=`<div class="ach-left"><span class="ach-badge">${st.unlocked?'🏅':'🔒'}</span><div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div></div><div style="font-size:.65rem; color:#ffe082;">${st.unlocked?(st.date||''):''}</div>`;achievementsContainerEl.appendChild(el);});}
+    function unlockAchievement(id){const st=achievementsState[id];if(!st||st.unlocked)return;st.unlocked=true;st.date=new Date().toLocaleString();renderAchievements();toast(`🏆 実績解除: ${achievementsDef.find(a=>a.id===id)?.name||id}`);saveGame();}
+
+    function checkCollectionAchievements(){
+      Object.entries(fields).forEach(([fieldId,field])=>{
+        // そのフィールドの全アイテムをリストアップ
+        const allArtifacts=[];
+        ['common','rare','epic','legendary'].forEach(rarity=>{
+          field.artifacts[rarity].forEach(artifact=>{
+            allArtifacts.push(`${fieldId}_${rarity}_${artifact.name}`);
+          });
+        });
+        
+        // そのフィールドで実際に発見したアイテム数をカウント
+        const collectedCount=allArtifacts.filter(key=>collection[key]&&collection[key].count>0).length;
+        
+        if(collectedCount>=allArtifacts.length)unlockAchievement('complete_'+fieldId);
+      });
+      
+      // 全体チェック
+      const allPossibleKeys=[];
+      Object.entries(fields).forEach(([fieldId,field])=>{
+        ['common','rare','epic','legendary'].forEach(rarity=>{
+          field.artifacts[rarity].forEach(artifact=>{
+            allPossibleKeys.push(`${fieldId}_${rarity}_${artifact.name}`);
+          });
+        });
+      });
+      
+      const totalCollectedCount=allPossibleKeys.filter(key=>collection[key]&&collection[key].count>0).length;
+      
+      if(totalCollectedCount>=allPossibleKeys.length)unlockAchievement('complete_all');
+    }
+
+    function findArtifact(){const baseRand=Math.random()*100;const commonThreshold=Math.max(20,80-rareBonus);let rarity,list;const field=fields[currentField];if(baseRand>99.99){rarity='legendary';list=field.artifacts.legendary;}else if(baseRand>95){rarity='epic';list=field.artifacts.epic;}else if(baseRand>commonThreshold){rarity='rare';list=field.artifacts.rare;}else{rarity='common';list=field.artifacts.common;}const artifact=list[Math.floor(Math.random()*list.length)];const key=`${currentField}_${rarity}_${artifact.name}`;if(!collection[key])collection[key]={...artifact,rarity,field:field.name,fieldId:currentField,count:0};collection[key].count++;foundItemEl.textContent=`${artifact.emoji} ${artifact.name} を発見！`;foundItemEl.className=`found-item rarity-${rarity}`;foundItemEl.style.visibility='visible';setTimeout(()=>foundItemEl.style.visibility='hidden',2000);maybeShowDialogue(rarity);const pointValues={common:1,rare:6,epic:22,legendary:110};addPoints(pointValues[rarity]);if(rarity==='rare')unlockAchievement('first_rare');if(rarity==='epic')unlockAchievement('first_epic');if(rarity==='legendary')unlockAchievement('first_legend');updateDisplay();updateCollection();checkCollectionAchievements();}
+
+    function updateCharacterPosition(){
+      characterEl.style.left=`${charX}%`;
+      characterEl.style.top=`${charY}%`;
+      characterEl.style.transform='translate(-50%, -50%)';
+      
+      // 移動方向に応じて左右反転（画像に適用）
+      if (charX !== prevCharX) {
+        const direction = charX > prevCharX ? 1 : -1; // 右に移動=1, 左に移動=-1
+        charSpriteEl.style.transform = `scaleX(${direction})`;
+        prevCharX = charX;
+      }
+    }
+    
+    /*** キャラクターアニメーション ***/
+    let currentSprite = 'idle';
+    let blinkInterval = null;
+    
+    function setSprite(spriteName) {
+      if (characterImages[currentField] && characterImages[currentField][spriteName]) {
+        charSpriteEl.src = characterImages[currentField][spriteName];
+        currentSprite = spriteName;
+      }
+    }
+    
+    function startBlinkAnimation() {
+      if (blinkInterval) clearInterval(blinkInterval);
+      
+      blinkInterval = setInterval(() => {
+        if (currentSprite === 'idle' && !isDigging) {
+          // まばたき
+          setSprite('blink');
+          setTimeout(() => {
+            if (currentSprite === 'blink') setSprite('idle');
+          }, 200); // 0.2秒まばたき
+        }
+      }, 100 + Math.random() * 150); // 2-5秒ごと
+    }
+    
+    function playDigAnimation() {
+      setSprite('digUp');
+      setTimeout(() => {
+        setSprite('digDown');
+        // idle戻りはdig関数側で管理するため、ここでは行わない
+      }, 200);
+    }
+    function moveCharacterTo(targetX,targetY,callback){
+      isDigging=true;
+      charX=targetX;
+      charY=targetY;
+      
+      characterEl.classList.add('moving');
+      updateCharacterPosition();
+      
+      setTimeout(()=>{
+        characterEl.classList.remove('moving');
+        if(callback)callback();
+        setTimeout(()=>{isDigging=false;},400);
+      },500);
+    }
+    function startWandering(){if(wanderInterval)clearInterval(wanderInterval);wanderInterval=setInterval(()=>{if(!isDigging){const newX=20+Math.random()*60;const newY=30+Math.random()*50;charX=newX;charY=newY;updateCharacterPosition();}},3000);}
+
+    function dig(amount=clickPower,x=null,y=null){
+      addPoints(amount);
+      totalDigs=Math.floor(totalDigs)+1;
+      
+      // 連打検知
+      const now = Date.now();
+      const isRapidFire = (now - lastDigTime) < 500; // 500ms以内なら連打
+      lastDigTime = now;
+      
+      if(x!==null&&y!==null){
+        playDigSound();
+        playDigAnimation();
+      }
+      
+      if(totalDigs===1)unlockAchievement('first_dig');
+      if(totalDigs>=100)unlockAchievement('dig_100');
+      
+      characterEl.classList.add('digging');
+      
+      // 既存のidleタイムアウトをクリア
+      if(idleTimeout) clearTimeout(idleTimeout);
+      
+      // 連打時はdigアニメーションを維持、通常時のみidle状態に戻る
+      idleTimeout = setTimeout(()=>{
+        characterEl.classList.remove('digging');
+        setSprite('idle');
+      }, isRapidFire ? 300 : 400);
+      
+      if(x!==null&&y!==null){
+        const hole=document.createElement('div');
+        hole.className='dig-hole';
+        hole.style.left=x+'px';
+        hole.style.top=y+'px';
+        excavationAreaEl.appendChild(hole);
+        setTimeout(()=>hole.remove(),2000);
+        
+        for(let i=0;i<5;i++){
+          const fx=document.createElement('div');
+          fx.className='dig-effect';
+          fx.textContent='💨';
+          fx.style.left=(x+Math.random()*40-20)+'px';
+          fx.style.top=(y+Math.random()*40-20)+'px';
+          excavationAreaEl.appendChild(fx);
+          setTimeout(()=>fx.remove(),800);
+        }
+      }
+      
+      if(amount>=1){
+        const eff=document.createElement('div');
+        eff.className='click-effect';
+        eff.textContent=`+${Math.floor(amount)}`;
+        const rect=excavationAreaEl.getBoundingClientRect();
+        eff.style.left=(x??(rect.width*0.5))+'px';
+        eff.style.top=(y??(rect.height*0.7))+'px';
+        excavationAreaEl.appendChild(eff);
+        setTimeout(()=>eff.remove(),1000);
+      }
+      
+      if(Math.random()<0.2)findArtifact();
+      else if(Math.random()<0.1)maybeShowDialogue('dig');
+      updateDisplay();
+    }
+
+    function updateDisplay(){pointsEl.textContent=Math.floor(points);clickPowerEl.textContent=clickPower;autoPowerEl.textContent=autoPower.toFixed(1);totalDigsEl.textContent=Math.floor(totalDigs);totalEarnedEl.textContent=Math.floor(totalPointsEarned);}
+
+    function spawnGoldenArtifact(){if(goldenArtifactActive)return;goldenArtifactActive=true;const golden=document.createElement('div');golden.className='golden-artifact';golden.textContent='🍫';golden.style.left=(Math.random()*70+15)+'%';golden.style.top=(Math.random()*50+30)+'%';golden.addEventListener('click',(e)=>{e.stopPropagation();playGoldenSound();const bonus=Math.floor(points*0.08+clickPower*12);addPoints(bonus);const effect=document.createElement('div');effect.className='click-effect';effect.textContent=`+${bonus} 🍫`;effect.style.left=golden.style.left;effect.style.top=golden.style.top;effect.style.position='absolute';effect.style.fontSize='1.5rem';effect.style.color='#ffd700';excavationAreaEl.appendChild(effect);setTimeout(()=>effect.remove(),1000);showDialogue('…すごい発見だ！');golden.remove();goldenArtifactActive=false;updateDisplay();scheduleGoldenArtifact();checkEarningsAchievements();});excavationAreaEl.appendChild(golden);setTimeout(()=>{if(golden.parentElement){golden.remove();goldenArtifactActive=false;scheduleGoldenArtifact();}},10000);}
+    function scheduleGoldenArtifact(){setTimeout(()=>spawnGoldenArtifact(),Math.random()*90000+30000);}
+
+    function getUpgradeCost(up){const owned=upgrades[up.id]||0;return Math.floor(up.baseCost*Math.pow(up.costMultiplier,owned));}
+    function buyUpgrade(up){const cost=getUpgradeCost(up);if(points>=cost){spendPoints(cost);upgrades[up.id]=(upgrades[up.id]||0)+1;up.effect();playPurchaseSound();updateDisplay();updateShop();const trustLevel=getTrustLevel();const purchaseDialogues=[['…良い選択だ','…それでいい','…うん、いいね'],['…ナイス判断','…賢い選択だ','…さすがだね'],['…素晴らしい判断だ','…完璧だよ','…信頼してるよ'],['…あなたの判断は最高だ','…いつも助かる','…さすが相棒だ'],['…あなたがいてくれて心強い','…本当に頼りになる','…最高のパートナーだ'],['…あなたは私の希望だ','…いつもありがとう','…あなたと一緒なら何でもできる']];const allDialogues=getCumulativeDialogues(purchaseDialogues,trustLevel);showDialogue(allDialogues[Math.floor(Math.random()*allDialogues.length)]);checkEarningsAchievements();}}
+    function updateShop(){if(shopContainerEl.children.length===0){upgradeData.forEach((up,idx)=>{const item=document.createElement('div');item.className='shop-item';item.dataset.upgradeId=up.id;item.dataset.index=idx;item.dataset.lastCount='0';item.innerHTML=`<div class="shop-item-name">${up.name}</div><div class="shop-item-desc">${up.desc}</div><div class="shop-item-cost">コスト: <span class="cost-value">0</span> pt</div><div class="shop-item-owned">所持: <span class="owned-value">0</span></div><div class="shop-upgrade-icons"></div>`;item.addEventListener('click',function(){if(!this.classList.contains('disabled'))buyUpgrade(up);});shopContainerEl.appendChild(item);});}upgradeData.forEach((up,idx)=>{const cost=getUpgradeCost(up),can=points>=cost;const el=shopContainerEl.children[idx];if(!el)return;el.querySelector('.cost-value').textContent=cost;el.querySelector('.owned-value').textContent=upgrades[up.id]||0;if(can)el.classList.remove('disabled');else el.classList.add('disabled');const icons=el.querySelector('.shop-upgrade-icons');const cnt=upgrades[up.id]||0;const lastCount=parseInt(el.dataset.lastCount||'0');if(cnt!==lastCount){el.dataset.lastCount=cnt.toString();icons.innerHTML='';for(let i=0;i<Math.min(cnt,20);i++){const s=document.createElement('span');s.className='shop-upgrade-icon';s.textContent=up.icon;icons.appendChild(s);}if(cnt>20){const t=document.createElement('span');t.className='count-text';t.style.cssText='font-size:.7rem; color:#81c784; margin-left:.25rem;';t.textContent=`×${cnt}`;icons.appendChild(t);}}});}
+
+    function updateCollection(){currentTab==='list'?updateCollectionList():updateCollectionGallery();}
+    function updateCollectionList(){collectionContainerEl.innerHTML='';const arr=Object.values(collection).sort((a,b)=>({common:0,rare:1,epic:2,legendary:3}[b.rarity]-{common:0,rare:1,epic:2,legendary:3}[a.rarity]));arr.forEach(item=>{const el=document.createElement('div');el.className=`collection-item ${item.rarity}`;el.innerHTML=`<div><span class="item-name">${item.emoji} ${item.name}</span><div style="font-size:.65rem; color:#ffe082;">${item.field}</div></div><span class="item-count">×${item.count}</span>`;collectionContainerEl.appendChild(el);});if(arr.length===0){collectionContainerEl.innerHTML='<div style="text-align:center; color:#ffe082;">まだ何も発見していない</div>';}}
+    function updateCollectionGallery(){collectionContainerEl.innerHTML='';Object.entries(fields).forEach(([fieldId,field])=>{const header=document.createElement('div');header.className='gallery-stage-header'+(field.unlocked?'':' locked');header.textContent=field.unlocked?`${field.emoji} ${field.name}`:`🔒 ${field.name}（${field.unlockCost} ptで解禁）`;collectionContainerEl.appendChild(header);const grid=document.createElement('div');grid.className='gallery-grid';['common','rare','epic','legendary'].forEach(rarity=>{field.artifacts[rarity].forEach(artifact=>{const key=`${fieldId}_${rarity}_${artifact.name}`;const owned=collection[key]?.count>0;const el=document.createElement('div');el.className=`gallery-item ${rarity} ${owned?'':'locked'}`;el.innerHTML=`<div class="gallery-emoji">${owned?artifact.emoji:'❓'}</div><div class="gallery-name">${owned?artifact.name:'？？？'}</div><div class="gallery-count">${owned?`×${collection[key].count}`:''}</div>`;grid.appendChild(el);});});collectionContainerEl.appendChild(grid);});}
+
+    listTabEl.addEventListener('click',()=>{currentTab='list';listTabEl.classList.add('active');galleryTabEl.classList.remove('active');updateCollection();});
+    galleryTabEl.addEventListener('click',()=>{currentTab='gallery';galleryTabEl.classList.add('active');listTabEl.classList.remove('active');updateCollection();});
+
+    function switchField(id){currentField=id;const f=fields[id];document.body.setAttribute('data-field',id);document.body.style.background=f.bgGradient;fieldBackgroundEl.style.background=f.fieldBg;const fieldNameEl=document.getElementById('current-field-name');fieldNameEl.style.color=f.textColor;dialogueEl.style.color=f.textColor;foundItemEl.style.color=f.textColor;fieldNameEl.textContent=`${f.emoji} ${f.name}`;const trustLevel=getTrustLevel();const arrivalDialogues=[[`…${f.name}に到着した`],[`…${f.name}だね`],[`…${f.name}か、楽しみだ`],[`…${f.name}、一緒に探索しよう`],[`…${f.name}、あなたとなら怖くない`],[`…${f.name}、あなたと一緒で嬉しい`]];const allArrival=getCumulativeDialogues(arrivalDialogues,trustLevel);showDialogue(allArrival[Math.floor(Math.random()*allArrival.length)]);setSprite('idle');updateFields();updateCollection();}
+
+    let fieldsInitialized=false;
+    let lastUnlockedCount=0;
+    
+    function updateFields(){
+      const container=document.getElementById('field-container');
+      
+      if(!fieldsInitialized){
+        container.innerHTML='';
+        Object.entries(fields).forEach(([id,f])=>{
+          const btn=document.createElement('button');
+          btn.dataset.fieldId=id;
+          btn.style.cssText=`padding:.4rem; border-radius:.4rem; border:2px solid transparent; background:rgba(255,255,255,.15); color:#ffecb3; cursor:pointer; transition:all .2s; font-size:.75rem; display:flex; justify-content:space-between; align-items:center;`;
+          
+          btn.addEventListener('click',function(){
+            const fid=this.dataset.fieldId,fld=fields[fid];
+            if(fld.unlocked){
+              switchField(fid);
+            }else if(points>=fld.unlockCost){
+              spendPoints(fld.unlockCost);
+              fld.unlocked=true;
+              const trustLevel=getTrustLevel();
+              const unlockDialogues=[[`…${fld.name}が解禁された！`],[`…${fld.name}を解禁したよ`],[`…${fld.name}、楽しみだね`],[`…${fld.name}、一緒に探検しよう`],[`…${fld.name}、あなたとなら怖くない`],[`…${fld.name}、新しい冒険の始まりだ`]];
+              const allUnlock=getCumulativeDialogues(unlockDialogues,trustLevel);
+              showDialogue(allUnlock[Math.floor(Math.random()*allUnlock.length)]);
+              
+              // 新規アンロック時のみ自動切替
+              switchField(fid);
+              
+              updateDisplay();
+              updateFields();
+              
+              const unlockedCount=Object.values(fields).filter(v=>v.unlocked).length;
+              if(unlockedCount>=2)unlockAchievement('unlock_2');
+              if(unlockedCount===Object.keys(fields).length)unlockAchievement('unlock_all');
+            }
+          });
+          
+          btn.addEventListener('mouseenter',function(){
+            const fid=this.dataset.fieldId;
+            if(fid!==currentField&&fields[fid].unlocked)this.style.background='rgba(255,255,255,.25)';
+          });
+          
+          btn.addEventListener('mouseleave',function(){
+            const fid=this.dataset.fieldId;
+            if(fid!==currentField&&fields[fid].unlocked)this.style.background='rgba(255,255,255,.15)';
+          });
+          
+          container.appendChild(btn);
+        });
+        fieldsInitialized=true;
+      }
+      
+      // 現在のアンロック数を記録
+      const currentUnlockedCount = Object.values(fields).filter(f=>f.unlocked).length;
+      lastUnlockedCount = currentUnlockedCount;
+      
+      Object.entries(fields).forEach(([id,f],idx)=>{
+        const btn=container.children[idx];
+        if(!btn)return;
+        const isCurrent=id===currentField,canUnlock=!f.unlocked&&points>=f.unlockCost;
+        
+        if(f.unlocked){
+          btn.innerHTML=`<span>${f.emoji} ${f.name}</span>${isCurrent?'<span>✓</span>':''}`;
+          btn.style.color='#ffecb3';
+          btn.style.cursor='pointer';
+          btn.style.opacity='1';
+          btn.style.borderColor=isCurrent?'#ffeb3b':'transparent';
+          btn.style.background='rgba(255,255,255,.15)';
+        }else{
+          btn.innerHTML=`<span>🔒 ${f.name}</span><span style="font-size:.75rem;">${f.unlockCost} pt</span>`;
+          if(canUnlock){
+            btn.style.cursor='pointer';
+            btn.style.color='#ffecb3';
+            btn.style.background='rgba(255,235,59,.2)';
+            btn.style.borderColor='#ffeb3b';
+            btn.style.opacity='1';
+          }else{
+            btn.style.cursor='not-allowed';
+            btn.style.color='#999';
+            btn.style.background='rgba(255,255,255,.05)';
+            btn.style.borderColor='#666';
+            btn.style.opacity='.5';
+          }
+        }
+      });
+    }
+
+    excavationAreaEl.addEventListener('click',(e)=>{const rect=excavationAreaEl.getBoundingClientRect();const x=e.clientX-rect.left;const y=e.clientY-rect.top;const targetX=(x/rect.width)*100;const targetY=(y/rect.height)*100;moveCharacterTo(targetX,targetY,()=>{dig(clickPower,x,y);});});
+    document.getElementById('reset-btn').addEventListener('click',()=>{if(confirm('本当にデータをリセットしますか？\nこの操作は取り消せません。')){localStorage.removeItem('excavationClicker_save');location.reload();}});
+
+    setInterval(()=>{if(autoPower>0)dig(autoPower/10);},100);
+    setInterval(()=>{updateShop();updateFields();},500);
+
+    function saveGame(){
+      const saveData={
+        points,
+        totalPointsEarned,
+        clickPower,
+        autoPower,
+        totalDigs:Math.floor(totalDigs),
+        rareBonus,
+        currentField,
+        currentTab,
+        upgrades,
+        collection,
+        fields:Object.fromEntries(Object.entries(fields).map(([id,f])=>[id,{unlocked:f.unlocked}])),
+        achievements:achievementsState
+      };
+      localStorage.setItem('excavationClicker_save',JSON.stringify(saveData));
+    }
+    function loadGame(){
+      const s=localStorage.getItem('excavationClicker_save');
+      if(!s)return false;
+      try{
+        const d=JSON.parse(s);
+        points=d.points??0;
+        totalPointsEarned=d.totalPointsEarned??0;
+        clickPower=d.clickPower??1;
+        autoPower=d.autoPower??0;
+        totalDigs=Math.floor(d.totalDigs??0);
+        rareBonus=d.rareBonus??0;
+        currentField=d.currentField??'grassland';
+        currentTab=d.currentTab??'list';
+        if(d.upgrades)Object.assign(upgrades,d.upgrades);
+        if(d.collection)Object.assign(collection,d.collection);
+        if(d.fields){
+          Object.entries(d.fields).forEach(([id,val])=>{
+            if(fields[id]&&val&&typeof val==='object'){
+              fields[id].unlocked=!!val.unlocked;
+            }
+          });
+        }
+        if(d.achievements)Object.keys(achievementsState).forEach(id=>{
+          if(d.achievements[id])achievementsState[id]=d.achievements[id];
+        });
+        
+        // ロード後の実績UI反映を確実に
+        renderAchievements();
+        
+        return true;
+      }catch(e){
+        console.error('ロード失敗',e);
+        return false;
+      }
+    }
+    setInterval(saveGame,5000);
+    window.addEventListener('beforeunload',saveGame);
+
+    const loaded=loadGame();
+    if(currentTab==='gallery'){
+      listTabEl.classList.remove('active');
+      galleryTabEl.classList.add('active');
+    }
+    
+    updateDisplay();
+    updateShop();
+    updateCollection();
+    renderAchievements();
+    updateFields();
+    switchField(currentField);
+
+    const trustLevel=getTrustLevel();
+    if(loaded){
+      const welcomeBackDialogues=[['…おかえり、続きから始めよう'],['…また会えたね'],['…待ってたよ'],['…また一緒だね、嬉しい'],['…会いたかった'],['…あなたが戻ってきてくれて嬉しい']];
+      const allWelcome=getCumulativeDialogues(welcomeBackDialogues,trustLevel);
+      showDialogue(allWelcome[Math.floor(Math.random()*allWelcome.length)]);
+    }else{
+      const startDialogues=[['…さあ、発掘を始めよう'],['…よろしく頼むよ'],['…一緒に頑張ろう'],['…あなたとなら楽しくなりそうだ'],['…あなたと一緒で心強い'],['…運命を感じるよ']];
+      const allStart=getCumulativeDialogues(startDialogues,trustLevel);
+      showDialogue(allStart[Math.floor(Math.random()*allStart.length)]);
+    }
+
+    function checkEarningsAchievements(){if(totalPointsEarned>=1000)unlockAchievement('earn_1k');if(totalPointsEarned>=10000)unlockAchievement('earn_10k');if(totalPointsEarned>=50000)unlockAchievement('earn_50k');if(totalPointsEarned>=100000)unlockAchievement('earn_100k');if(totalPointsEarned>=500000)unlockAchievement('earn_500k');if(totalPointsEarned>=1000000)unlockAchievement('earn_1m');}
+    checkEarningsAchievements();
+    checkCollectionAchievements();
+    const unlockedCount=Object.values(fields).filter(v=>v.unlocked).length;if(unlockedCount>=2)unlockAchievement('unlock_2');if(unlockedCount===Object.keys(fields).length)unlockAchievement('unlock_all');
+    scheduleGoldenArtifact();
+
+    updateCharacterPosition();
+    startWandering();
+    
+    // キャラクター画像とアニメーション初期化
+    setSprite('idle');
+    startBlinkAnimation();
+  </script>
+</body>
+</html>
