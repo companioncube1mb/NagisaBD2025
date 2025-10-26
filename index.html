@@ -466,9 +466,9 @@
           setSprite('blink');
           setTimeout(() => {
             if (currentSprite === 'blink') setSprite('idle');
-          }, 1400); // 1.4秒まばたき
+          }, 400); // 0.4秒まばたき
         }
-      }, 100 + Math.random() * 150); // 2-5秒ごと
+      }, 200 + Math.random() * 350); // 2-5秒ごと
     }
     
     function playDigAnimation() {
